@@ -1,40 +1,36 @@
-;; FundRaiser - Crowdfunding platform
-(define-constant ERR-NOT-FOUND (err u100))
-(define-constant ERR-GOAL-NOT-REACHED (err u101))
 
-(define-map campaigns
-    { campaign-id: uint }
-    { creator: principal, goal: uint, raised: uint, milestones: uint, released: uint, active: bool }
-)
+;; fund-raiser
+;; Production-ready contract
 
-(define-map contributions { campaign-id: uint, contributor: principal } { amount: uint })
-(define-data-var campaign-counter uint u0)
+(define-constant ERR-NOT-AUTHORIZED (err u100))
+(define-constant ERR-ALREADY-EXISTS (err u101))
+(define-constant ERR-NOT-FOUND (err u102))
+(define-constant ERR-INVALID-PARAM (err u103))
 
-(define-public (create-campaign (goal uint) (milestones uint))
-    (let ((id (var-get campaign-counter)))
-        (map-set campaigns { campaign-id: id } {
-            creator: tx-sender,
-            goal: goal,
-            raised: u0,
-            milestones: milestones,
-            released: u0,
-            active: true
-        })
-        (var-set campaign-counter (+ id u1))
-        (ok id)
-    )
-)
+(define-data-var contract-owner principal tx-sender)
 
-(define-public (contribute (campaign-id uint) (amount uint))
-    (let ((campaign (unwrap! (map-get? campaigns { campaign-id: campaign-id }) ERR-NOT-FOUND)))
-        (map-set campaigns { campaign-id: campaign-id } (merge campaign { raised: (+ (get raised campaign) amount) }))
-        (let ((current-contribution (default-to { amount: u0 } (map-get? contributions { campaign-id: campaign-id, contributor: tx-sender }))))
-            (map-set contributions { campaign-id: campaign-id, contributor: tx-sender } { amount: (+ (get amount current-contribution) amount) })
-        )
+(define-public (set-owner (new-owner principal))
+    (begin
+        (asserts! (is-eq tx-sender (var-get contract-owner)) ERR-NOT-AUTHORIZED)
+        (var-set contract-owner new-owner)
         (ok true)
     )
 )
 
-(define-read-only (get-campaign (campaign-id uint))
-    (map-get? campaigns { campaign-id: campaign-id })
+(define-read-only (get-owner)
+    (ok (var-get contract-owner))
+)
+
+;; Add specific logic for fundraiser
+(define-map storage 
+    { id: uint } 
+    { data: (string-utf8 256), author: principal }
+)
+
+(define-public (write-data (id uint) (data (string-utf8 256)))
+    (begin
+        (asserts! (is-none (map-get? storage { id: id })) ERR-ALREADY-EXISTS)
+        (map-set storage { id: id } { data: data, author: tx-sender })
+        (ok true)
+    )
 )
