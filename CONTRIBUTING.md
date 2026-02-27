@@ -1,4 +1,4 @@
-# Contributing to ChainRegistry
+# Contributing to FundRaiser
 
 Thank you for your interest in contributing! We welcome contributions from the community.
 
